@@ -13,7 +13,7 @@ Rails.application.routes.draw do
   # root "posts#index"
 
   namespace :api do
-    resources :categories, only: [ :index ]
+    resources :categories, only: [ :index, :create ] # Added Create API for the categories
     resources :expenses, only: [ :index, :create, :update, :destroy ]
   end
 end
