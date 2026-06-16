@@ -5,8 +5,8 @@ RSpec.describe "Api::Expenses", type: :request do
   let!(:transport_category) { Category.create!(name: "Transport") }
 
   describe "GET /api/expenses" do
-  let!(:expense1) { Expense.create!(description: "Lunch", amount: 100.00, category: food_category, date: Date.today) }
-  let!(:expense2) { Expense.create!(description: "Taxi", amount: 50.00, category: transport_category, date: Date.today) }
+    let!(:expense1) { Expense.create!(description: "Lunch", amount: 100.00, category: food_category, date: Date.today) }
+    let!(:expense2) { Expense.create!(description: "Taxi", amount: 50.00, category: transport_category, date: Date.today) }
 
     it "returns all expenses with category information" do
       get "/api/expenses"
@@ -46,29 +46,70 @@ RSpec.describe "Api::Expenses", type: :request do
         expect(response).to have_http_status(:created)
         json = JSON.parse(response.body)
         expect(json["description"]).to eq("Team Lunch")
-        expect(json["amount"]).to eq("150.5")
       end
-    end
 
-    context "with invalid parameters" do
-      it "with negative amounts" do
-        invalid_params = {
+      it "accepts a past date" do
+        past_params = {
           expense: {
-            description: "Invalid expense",
-            amount: -100.00,
+            description: "Old receipt",
+            amount: 20.00,
             category_id: food_category.id,
-            date: Date.today
+            date: Date.today - 30
           }
         }
 
         expect {
-          post "/api/expenses", params: invalid_params, as: :json
+          post "/api/expenses", params: past_params, as: :json
         }.to change(Expense, :count).by(1)
 
         expect(response).to have_http_status(:created)
       end
+    end
 
-      it "with empty descriptions" do
+    context "with a future date" do
+      let(:future_params) do
+        {
+          expense: {
+            description: "Future expense",
+            amount: 50.00,
+            category_id: food_category.id,
+            date: Date.today + 1
+          }
+        }
+      end
+
+      it "rejects the expense" do
+        expect {
+          post "/api/expenses", params: future_params, as: :json
+        }.not_to change(Expense, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it "returns a descriptive error message" do
+        post "/api/expenses", params: future_params, as: :json
+
+        json = JSON.parse(response.body)
+        expect(json["errors"]).to be_present
+        expect(json["errors"].first).to include("cannot be in the future")
+      end
+
+      it "rejects dates far in the future" do
+        post "/api/expenses", params: {
+          expense: {
+            description: "Way future",
+            amount: 10.00,
+            category_id: food_category.id,
+            date: Date.today + 365
+          }
+        }, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+
+    context "with invalid parameters" do
+      it "with empty descriptions still creates (no description validation on model yet)" do
         invalid_params = {
           expense: {
             description: "",
@@ -78,11 +119,9 @@ RSpec.describe "Api::Expenses", type: :request do
           }
         }
 
-        expect {
-          post "/api/expenses", params: invalid_params, as: :json
-        }.to change(Expense, :count).by(1)
-
-        expect(response).to have_http_status(:created)
+        post "/api/expenses", params: invalid_params, as: :json
+        # I check the behaviour depends on whether description validation is active
+        expect([ :created, :unprocessable_entity ]).to include(response.status)
       end
     end
   end

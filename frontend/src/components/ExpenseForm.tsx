@@ -24,7 +24,7 @@ export function ExpenseForm({
   onCancel,
   submitLabel = "Add Expense",
 }: ExpenseFormProps) {
-  const { formData, errors, isSubmitting, handleChange, handleSubmit } =
+  const { formData, errors, isSubmitting, handleChange, handleSubmit, today } =
     useExpenseForm({ initialData, onSubmit });
 
   const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
@@ -90,6 +90,12 @@ export function ExpenseForm({
     display: "flex",
     gap: "0.5rem",
     marginTop: "0.5rem",
+  };
+
+  const dateHintStyle: React.CSSProperties = {
+    fontSize: "0.75rem",
+    color: COLORS.text.secondary,
+    marginTop: "-0.5rem",
   };
 
   const categoryOptions = categories.map((c) => ({
@@ -165,15 +171,22 @@ export function ExpenseForm({
           </button>
         </div>
 
-        <TextField
-          label="Date"
-          type="date"
-          value={formData.date}
-          onChange={(e) => handleChange("date", e.target.value)}
-          error={errors.date}
-          fullWidth
-          required
-        />
+        {/* Date field: max="today" blocks the native date picker calendar from showing future dates, and the hook validates manual typed input too. */}
+        <div>
+          <TextField
+            label="Date"
+            type="date"
+            value={formData.date}
+            max={today}
+            onChange={(e) => handleChange("date", e.target.value)}
+            error={errors.date}
+            fullWidth
+            required
+          />
+          {!errors.date && (
+            <p style={dateHintStyle}>You can only record expenses for today or past dates.</p>
+          )}
+        </div>
 
         <div style={buttonGroupStyle}>
           <Button

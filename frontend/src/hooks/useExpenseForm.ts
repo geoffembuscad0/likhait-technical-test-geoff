@@ -12,11 +12,12 @@ interface UseExpenseFormProps {
 }
 
 export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
+  const today = formatDate(new Date()); //I needed this to get the date today
   const [formData, setFormData] = useState<ExpenseFormData>({
     amount: initialData?.amount || "",
     description: initialData?.description || "",
     category: initialData?.category || "",
-    date: initialData?.date || formatDate(new Date()),
+    date: initialData?.date || today, // I set the state of date to today
   });
 
   const [errors, setErrors] = useState<Partial<ExpenseFormData>>({});
@@ -28,6 +29,14 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+  };
+
+  // My Validation for Future Date
+  const isFutureDate = (dateString: string): boolean => {
+    const selected = new Date(dateString + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return selected > today;
   };
 
   const validateForm = (): boolean => {
@@ -47,6 +56,8 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
 
     if (!formData.date) {
       newErrors.date = "Date is required";
+    } else if (isFutureDate(formData.date)) { // My condition in my React where I check the future Date and restrict the user to select today date and past dates only.
+      newErrors.date = "Date cannot be in the future. Please select today or a past date.";
     }
 
     setErrors(newErrors);
@@ -95,5 +106,6 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
     handleChange,
     handleSubmit,
     resetForm,
+    today,
   };
 }
